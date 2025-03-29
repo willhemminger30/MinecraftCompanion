@@ -314,6 +314,7 @@ public class Processor {
         String responseFormat = whisperFormat + "@COMPANION";
         String leftGame = "[Server thread/INFO]: " + userName + " left the game";
         String joinedGame = "[Server thread/INFO]: " + userName + " joined the game";
+        String joinedServer = "[Render thread/INFO]: Connecting to";
 
         byte b;
 
@@ -325,7 +326,7 @@ public class Processor {
                 //when encountering a newline character, read the entire line
                 if(b == 10) {
                     line = file.readLine();
-                    if(line.contains(responseFormat) || line.contains(joinedGame)) {
+                    if(line.contains(responseFormat) || line.contains(joinedGame) || line.contains(joinedServer)) {
                         return "";
                     }
                     if (line.contains(commandFormat)) {
