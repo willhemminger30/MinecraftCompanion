@@ -64,7 +64,7 @@ public class Main {
 
         if(sessionDirectory.exists() || sessionDirectory.mkdir()) {
             try {
-                Processor.scan(user, userName, logFile, line, companionPrefix, sessionID);
+                Processor.scan(user, userName, logFile, companionPrefix, sessionID);
             } catch (AWTException | InterruptedException e) {
                 e.printStackTrace();
             }

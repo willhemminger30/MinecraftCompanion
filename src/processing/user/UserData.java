@@ -185,4 +185,17 @@ public class UserData {
         return true;
     }
 
+    public String teleportUser(String id) {
+        CoordinateEntry coordinate;
+        Optional<CoordinateEntry> coordinateEntry = coordinateEntries.stream()
+                .filter(coordinateEntry1 -> coordinateEntry1.getId().equals(id)).findFirst();
+
+        if(coordinateEntry.isPresent()) {
+            coordinate = coordinateEntry.get();
+            return "/tp " + coordinate.getX() + " " + coordinate.getY() + " " + coordinate.getZ();
+        } else {
+            return "ENTRY NOT FOUND";
+        }
+    }
+
 }

@@ -12,11 +12,21 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
-import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Processor {
+
+    private static boolean teleport;
+
+    /**
+     * Accept user input and process accordingly
+     * @param line
+     * @param userName
+     * @param fileName
+     * @param user
+     * @return
+     */
     public static String process(String line, String userName, String fileName, UserData user) {
         //isolate the first word of the line.  This is the command
         String response;
@@ -48,7 +58,7 @@ public class Processor {
                     case "list" -> {
                         response = listData(user);
                     }
-                    case "export" -> {
+                    case "export" -> { // exports to text file
                         response = exportData(user, userName, fileName);
                     }
                     default -> {
@@ -71,8 +81,15 @@ public class Processor {
                     case "list" -> {
                         response = listCoordinates(user);
                     }
-                    case "export" -> {
+                    case "export" -> { // exports to csv file
                         response = exportCoordinates(user, userName, fileName);
+                    }
+                    case "tp" -> { // teleports player to corresponding location
+                        line = matcher.group(3).trim();
+                        response = teleport(user, line);
+                        if(response.contains("/tp")) {
+                            teleport = true;
+                        }
                     }
                     default -> {
                         response = "Invalid coordinate command";
@@ -87,9 +104,15 @@ public class Processor {
             response = "NO DATA";
         }
 
-        return "@COMPANION: " + response;
+        return response;
     }
 
+    /**
+     * sends text data to user object
+     * @param line
+     * @param user
+     * @return
+     */
     private static String storeData(String line, UserData user) {
         if(user.addDataEntry(line)) {
             return "DATA SENT TO COMPANION";
@@ -98,10 +121,21 @@ public class Processor {
         }
     }
 
+    /**
+     * retrieves text data from user object
+     * @param line
+     * @param user
+     * @return
+     */
     private static String getData(String line, UserData user) {
         return user.getDataEntry(line);
     }
 
+    /**
+     * list available user data entries
+     * @param user
+     * @return
+     */
     private static String listData(UserData user) {
         String categories = "";
         ArrayList<DataEntry> dataEntries = user.getDataEntries();
@@ -115,6 +149,13 @@ public class Processor {
         return categories;
     }
 
+    /**
+     * export data to text file
+     * @param user
+     * @param userName
+     * @param sessionID
+     * @return
+     */
     private static String exportData(UserData user, String userName, String sessionID) {
         if(user.exportData(userName, sessionID)) {
             return "DATA EXPORT COMPLETE";
@@ -123,6 +164,12 @@ public class Processor {
         }
     }
 
+    /**
+     * store coordinate data in user object
+     * @param line
+     * @param user
+     * @return
+     */
     private static String storeCoordinate(String line, UserData user) {
         if(user.addCoordinateEntry(line)) {
             return "COORDINATE SENT TO COMPANION";
@@ -131,10 +178,21 @@ public class Processor {
         }
     }
 
+    /**
+     * retrieve coordinate from user object
+     * @param line
+     * @param user
+     * @return
+     */
     private static String getCoordinate(String line, UserData user) {
         return user.getCoordinateEntry(line);
     }
 
+    /**
+     * retrieve list of coordinate IDs from user object
+     * @param user
+     * @return
+     */
     private static String listCoordinates(UserData user) {
         String ids = "";
         ArrayList<CoordinateEntry> coordinateEntries = user.getCoordinateEntries();
@@ -149,6 +207,13 @@ public class Processor {
         return ids;
     }
 
+    /**
+     * export coordinates to CSV file
+     * @param user
+     * @param userName
+     * @param sessionID
+     * @return
+     */
     private static String exportCoordinates(UserData user, String userName, String sessionID) {
         if(user.exportCoordinates(userName, sessionID)) {
             return "DATA EXPORT COMPLETE";
@@ -157,7 +222,21 @@ public class Processor {
         }
     }
 
-    public static void scan(UserData user, String userName, File logFile, String line, String companionPrefix, String sessionID) throws AWTException, InterruptedException {
+    private static String teleport(UserData user, String line) {
+        return user.teleportUser(line);
+    }
+
+    /**
+     * Method to scan log file for commands and process them accordingly
+     * @param user
+     * @param userName
+     * @param logFile
+     * @param companionPrefix
+     * @param sessionID
+     * @throws AWTException
+     * @throws InterruptedException
+     */
+    public static void scan(UserData user, String userName, File logFile, String companionPrefix, String sessionID) throws AWTException, InterruptedException {
         long length, prevLength = 0L;
         boolean continueScanning = true;
         Robot robot = new Robot();
@@ -166,6 +245,7 @@ public class Processor {
         String command;
         boolean playerLeftGame = false;
         String acknowledgement = "/w " + userName + " ";
+        String response;
 
         if(logFile.exists()) {
             while(continueScanning) {
@@ -175,6 +255,7 @@ public class Processor {
                     command = parseLogFile(logFile, companionPrefix, userName);
 
                     if(!command.isEmpty()) {
+
                         if(command.equals("EXIT")) {
                             continueScanning = false;
                             playerLeftGame = true;
@@ -191,34 +272,26 @@ public class Processor {
                         // send acknowledgement back to user
                         if(continueScanning) {
                             // acknowledgement will contain result of processor
-                            stringSelection = new StringSelection(acknowledgement + Processor.process(command, userName, sessionID, user));
+                            response = Processor.process(command, userName, sessionID, user);
+
+                            if(teleport) {
+                                teleport = false;
+                                stringSelection = new StringSelection(response);
+                                sendToKeyboard(clipboard, robot, stringSelection);
+                                stringSelection = new StringSelection(acknowledgement + "@COMPANION: TELEPORT COMPLETE");
+                            } else {
+                                stringSelection = new StringSelection(acknowledgement + "@COMPANION: " + response);
+                            }
+
                         } else {
                             stringSelection = new StringSelection(acknowledgement + "COMPANION SHUTDOWN");
                         }
 
+                        // if the player has left the game, do not paste response using keyboard
                         if(!playerLeftGame) {
-                            // copy and paste acknowledgement into user's chat
-                            clipboard.setContents(stringSelection, null);
-
-                            Thread.sleep(100);
-                            robot.keyPress(KeyEvent.VK_T);
-                            robot.keyRelease(KeyEvent.VK_T);
-                            Thread.sleep(100);
-
-                            robot.keyPress(KeyEvent.VK_CONTROL);
-                            robot.keyPress(KeyEvent.VK_V);
-
-                            Thread.sleep(100);
-
-                            robot.keyRelease(KeyEvent.VK_V);
-                            robot.keyRelease(KeyEvent.VK_CONTROL);
-
-                            Thread.sleep(100);
-                            robot.keyPress(KeyEvent.VK_ENTER);
-                            robot.keyRelease(KeyEvent.VK_ENTER);
+                            sendToKeyboard(clipboard, robot, stringSelection);
                         }
                     }
-
                 }
             }
 
@@ -227,6 +300,13 @@ public class Processor {
         }
     }
 
+    /**
+     * method to parse log file from bottom up
+     * @param logFile
+     * @param companionPrefix
+     * @param userName
+     * @return
+     */
     private static String parseLogFile(File logFile, String companionPrefix, String userName) {
         String line;
         String whisperFormat = "[Render thread/INFO]: [CHAT] " + userName + " whispers to you: ";
@@ -237,17 +317,12 @@ public class Processor {
 
         byte b;
 
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
         try(RandomAccessFile file = new RandomAccessFile(logFile, "r")) {
             for(long i = file.length() - 2; i > -1; i--) {
-                file.seek(i);
+                file.seek(i); // start seeking at end of file
                 b = (byte) file.read();
 
+                //when encountering a newline character, read the entire line
                 if(b == 10) {
                     line = file.readLine();
                     if(line.contains(responseFormat) || line.contains(joinedGame)) {
@@ -257,7 +332,7 @@ public class Processor {
                         return(line);
                     }
                     if(line.contains(leftGame)) {
-                        return "EXIT";
+                        return "EXIT"; // will shut down companion application in this scenario
                     }
                 }
             }
@@ -266,5 +341,33 @@ public class Processor {
         }
 
         return "";
+    }
+
+    private static void sendToKeyboard(Clipboard clipboard, Robot robot, StringSelection stringSelection) throws InterruptedException {
+        // copy and paste acknowledgement into user's chat
+        clipboard.setContents(stringSelection, null);
+
+        Thread.sleep(100);
+        robot.keyPress(KeyEvent.VK_T);
+        robot.keyRelease(KeyEvent.VK_T);
+        Thread.sleep(100);
+
+        robot.keyPress(KeyEvent.VK_CONTROL);
+        robot.keyPress(KeyEvent.VK_V);
+
+        Thread.sleep(100);
+
+        robot.keyRelease(KeyEvent.VK_V);
+        robot.keyRelease(KeyEvent.VK_CONTROL);
+
+        Thread.sleep(100);
+        robot.keyPress(KeyEvent.VK_ENTER);
+        robot.keyRelease(KeyEvent.VK_ENTER);
+
+        try {
+            Thread.sleep(500); // wait to allow file to be finalized after changes are made
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
