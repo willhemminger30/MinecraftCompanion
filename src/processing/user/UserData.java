@@ -3,7 +3,6 @@ package processing.user;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.Scanner;
@@ -14,12 +13,12 @@ public class UserData {
     private ArrayList<DataEntry> dataEntries;
     private ArrayList<CoordinateEntry> coordinateEntries;
 
-    public UserData(String dataFile) {
+    public UserData(String sessionID) {
         dataEntries = new ArrayList<DataEntry>();
         coordinateEntries = new ArrayList<CoordinateEntry>();
         String line;
 
-        File file = new File(dataFile);
+        File file = new File(sessionID + "/" + sessionID + ".txt");
 
         if(file.exists()) {
             // read data from file
@@ -58,8 +57,8 @@ public class UserData {
         return coordinateEntries;
     }
 
-    public void saveToFile(String dataFile) {
-        try(FileWriter writer = new FileWriter(dataFile, false)) {
+    public void saveToFile(String sessionID) {
+        try(FileWriter writer = new FileWriter(sessionID + "/" + sessionID + ".txt")) {
             for(DataEntry data : dataEntries) {
                 writer.write("data " + data + "\n");
             }
@@ -89,7 +88,7 @@ public class UserData {
             if(existingOptionalEntry.isPresent()) {
                 existingEntry = existingOptionalEntry.get();
                 existingPayload = existingEntry.getPayload();
-                existingEntry.setPayload(existingPayload + ";" + payload);
+                existingEntry.setPayload(existingPayload + ";!;" + payload);
             } else {
                 dataEntries.add(new DataEntry(category, payload));
             }
@@ -99,7 +98,7 @@ public class UserData {
     }
 
     public boolean addCoordinateEntry(String line) {
-        Pattern pattern = Pattern.compile("(\\S+) ([\\d.]+),([\\d.]+),([\\d.]+)");
+        Pattern pattern = Pattern.compile("(\\S+) (-*\\d+\\.*\\d*),(-*\\d+\\.*\\d*),(-*\\d+\\.*\\d*)");
         Matcher matcher = pattern.matcher(line);
 
         if(matcher.find()) {
@@ -120,7 +119,7 @@ public class UserData {
         if(matchingEntry.isPresent()) {
             payload = "";
             matchedEntry = matchingEntry.get();
-            tokens = matchedEntry.getPayload().split(";");
+            tokens = matchedEntry.getPayload().split(";!;");
 
             for(int i = 0; i < tokens.length; i++) {
                 payload += tokens[i] + (i < (tokens.length - 1) ? " -- " : "");
@@ -141,6 +140,49 @@ public class UserData {
         } else {
             return "ENTRY NOT FOUND";
         }
+    }
+
+    public boolean exportData(String userName, String sessionID) {
+        try(FileWriter writer = new FileWriter(sessionID + "/" + userName + "_" + sessionID + "_" + "data.txt")) {
+            String payload;
+            String[] tokens;
+
+            for(DataEntry dataEntry : dataEntries) {
+                payload = "";
+                tokens = dataEntry.getPayload().split(";!;");
+
+                for(String token : tokens) {
+                    payload += token + "\n";
+                }
+
+                writer.write(dataEntry.getCategory() + "\n");
+                writer.write(payload);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
+    public boolean exportCoordinates(String userName, String sessionID) {
+        try(FileWriter writer = new FileWriter(sessionID + "/" + userName + "_" + sessionID + "_" + "coords.csv")) {
+            String payload = "";
+            int size = coordinateEntries.size();
+            int sizeMinusOne = size - 1;
+
+            for(int i = 0; i < size; i++) {
+                payload += coordinateEntries.get(i).toCSV() + (i < sizeMinusOne ? "\n" : "");
+            }
+
+            writer.write(payload);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 
 }

@@ -1,4 +1,4 @@
-userName=<USERNAME>
-logFilePath=C:\Users\<username>\AppData\Roaming\.minecraft\logs\latest.log
-dataFilePath=session1.txt
+userName=<username>
+logFilePath=C:\Users\<name>\AppData\Roaming\.minecraft\logs\latest.log
+sessionID=session1
 companionPrefix=>>

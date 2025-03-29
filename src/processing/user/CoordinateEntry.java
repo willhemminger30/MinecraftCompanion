@@ -49,4 +49,8 @@ public class CoordinateEntry {
     public String toString() {
         return id + " " + x + "," + y + "," + z;
     }
+
+    public String toCSV() {
+        return id + "," + x + "," + y + "," + z;
+    }
 }
