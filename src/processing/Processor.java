@@ -10,6 +10,8 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.regex.Matcher;
@@ -18,7 +20,7 @@ import java.util.regex.Pattern;
 public class Processor {
     public static String process(String line, String userName, String fileName, UserData user) {
         //isolate the first word of the line.  This is the command
-        String response = "";
+        String response;
         String command;
         String subCommand;
         Pattern pattern = Pattern.compile("(\\S+) (\\S+)($| .+)");
@@ -79,7 +81,7 @@ public class Processor {
                 }
             }
             default ->
-                response = "Unknown Command";
+                    response = "Unknown Command";
         }
 
         if(response.trim().isEmpty()) {
@@ -157,60 +159,45 @@ public class Processor {
     }
 
     public static void scan(UserData user, String userName, File logFile, String line, String companionPrefix, String sessionID) throws AWTException, InterruptedException {
-        long length = 0L, prevNumLines = 0L, currentNumLines = 0L;
+        long length, prevLength = 0L;
         boolean continueScanning = true;
         Robot robot = new Robot();
         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         StringSelection stringSelection;
-        String lastCommand;
-        String whisperFormat = "[Render thread/INFO]: [CHAT] " + userName + " whispers to you: ";
-        String commandFormat = whisperFormat + companionPrefix;
-        String responseFormat = whisperFormat + "@COMPANION";
+        String command;
+        boolean playerLeftGame = false;
         String acknowledgement = "/w " + userName + " ";
 
-        while(continueScanning) {
-            lastCommand = "";
-            if(logFile.exists()) {
-                if(logFile.length() != length) {
-                    //if the log logFile length has changed
-                    length = logFile.length();
+        if(logFile.exists()) {
+            while(continueScanning) {
+                length = logFile.length();
+                if(length > prevLength) {
+                    prevLength = length;
+                    command = parseLogFile(logFile, companionPrefix, userName);
 
-                    try(Scanner reader = new Scanner(logFile)) {
-                        while(reader.hasNext()) {
-                            //find commands in log file
-                            currentNumLines++;
-                            line = reader.nextLine();
-                            if (line.contains(commandFormat)) {
-                                lastCommand = line;
-                            }
-
-                            if(line.contains(responseFormat)) {
-                                lastCommand = "";
-                            }
+                    if(!command.isEmpty()) {
+                        if(command.equals("EXIT")) {
+                            continueScanning = false;
+                            playerLeftGame = true;
                         }
 
+                        if(command.contains("EXIT COMPANION")) {
+                            continueScanning = false;
+                        }
 
-                        //check that log file lines have increased
-                        if(currentNumLines > prevNumLines && !lastCommand.isEmpty()) {
-                            if(lastCommand.contains("EXIT COMPANION")) {
-                                continueScanning = false;
-                            }
+                        // process user's input
+                        System.out.println(command);
+                        command = command.substring(command.indexOf(companionPrefix) + companionPrefix.length()).trim();
 
-                            prevNumLines = currentNumLines;
-                            currentNumLines = 0;
+                        // send acknowledgement back to user
+                        if(continueScanning) {
+                            // acknowledgement will contain result of processor
+                            stringSelection = new StringSelection(acknowledgement + Processor.process(command, userName, sessionID, user));
+                        } else {
+                            stringSelection = new StringSelection(acknowledgement + "COMPANION SHUTDOWN");
+                        }
 
-                            // process user's input
-                            lastCommand = lastCommand.substring(lastCommand.indexOf(companionPrefix) + companionPrefix.length()).trim();
-                            System.out.println(lastCommand);
-
-                            // send acknowledgement back to user
-                            if(continueScanning) {
-                                // acknowledgement will contain result of processor
-                                stringSelection = new StringSelection(acknowledgement + Processor.process(lastCommand, userName, sessionID, user));
-                            } else {
-                                stringSelection = new StringSelection(acknowledgement + "COMPANION SHUTDOWN");
-                            }
-
+                        if(!playerLeftGame) {
                             // copy and paste acknowledgement into user's chat
                             clipboard.setContents(stringSelection, null);
 
@@ -231,14 +218,54 @@ public class Processor {
                             robot.keyPress(KeyEvent.VK_ENTER);
                             robot.keyRelease(KeyEvent.VK_ENTER);
                         }
-                    } catch (FileNotFoundException e) {
-                        e.printStackTrace();
+                    }
+
+                }
+            }
+
+        } else {
+            System.err.println("Log file not found.");
+        }
+    }
+
+    private static String parseLogFile(File logFile, String companionPrefix, String userName) {
+        String line;
+        String whisperFormat = "[Render thread/INFO]: [CHAT] " + userName + " whispers to you: ";
+        String commandFormat = whisperFormat + companionPrefix;
+        String responseFormat = whisperFormat + "@COMPANION";
+        String leftGame = "[Server thread/INFO]: " + userName + " left the game";
+        String joinedGame = "[Server thread/INFO]: " + userName + " joined the game";
+
+        byte b;
+
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        try(RandomAccessFile file = new RandomAccessFile(logFile, "r")) {
+            for(long i = file.length() - 2; i > -1; i--) {
+                file.seek(i);
+                b = (byte) file.read();
+
+                if(b == 10) {
+                    line = file.readLine();
+                    if(line.contains(responseFormat) || line.contains(joinedGame)) {
+                        return "";
+                    }
+                    if (line.contains(commandFormat)) {
+                        return(line);
+                    }
+                    if(line.contains(leftGame)) {
+                        return "EXIT";
                     }
                 }
-            } else {
-                System.err.println("Log file not found.");
-                continueScanning = false;
             }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+
+        return "";
     }
 }
