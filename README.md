@@ -17,7 +17,7 @@ E.g., **/w \<UserName\> >> data store topic This is the text I want to associate
 
 Pay attention to the syntax used.  The command begins with the *companion prefix*, **>>**, followed by the word **data**, which indicates that we will perform some operation using text data.  Next is the **store** sub-command, which declares that the following text will be stored under the respective **topic**.  After the topic is chosen, the text that forms the payload for the message is written, "**This is the text I want to associate with this topic.**"
 
-The available commands at this time are **data** and **coord**.  The available sub-commands for data are as follows:
+The available commands at this time are **data** and **coord**.  The available sub-commands for **data** are as follows:
 - **store**
   - store text information to be retrieved at a later time
   - Storing multiple text strings with the same topic will append them to that topic
@@ -32,7 +32,7 @@ The available commands at this time are **data** and **coord**.  The available s
   - export stored text to a .txt file
   - ex: **data export**
 
-The available sub-commands for coord at this time are as follows:
+The available sub-commands for **coord** at this time are as follows:
 - **store**
   - store coordinate information with associated id and x,y,z values
   - storing multiple coordinates with the same id will overwrite that coordinate
