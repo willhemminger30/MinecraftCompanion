@@ -57,7 +57,7 @@ To exit the companion, there are two options currently available.  In a singlepl
 
 In a multiplayer server, the user *must* use the  **EXIT COMPANION** command.
 
-Upon exit, the user's information for that session will be saved, regardless of if they used the export commands.  When they start the application on subsequent occasions, the exiting information for the associated SessionID will be loaded back into memory, and the user can continue to use prior data.
+Upon exit, the user's information for that session will be saved, regardless of if they used the export commands.  When they start the application on subsequent occasions, the existing information for the associated SessionID will be loaded back into memory, and the user can continue to use prior data.
 
 There is currently no built-in command for deleting information.  However, through manipulation of the generated sessionID.txt file (after the companion exits), one can remove stored data and coordinates.
 
