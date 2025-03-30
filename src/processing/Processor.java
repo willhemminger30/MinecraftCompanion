@@ -290,7 +290,7 @@ public class Processor {
                             }
 
                         } else {
-                            stringSelection = new StringSelection(acknowledgement + "COMPANION SHUTDOWN");
+                            stringSelection = new StringSelection(acknowledgement + "@COMPANION: COMPANION SHUTDOWN");
                         }
 
                         // if the player has left the game, do not paste response using keyboard
