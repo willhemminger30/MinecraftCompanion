@@ -222,6 +222,12 @@ public class Processor {
         }
     }
 
+    /**
+     * teleport player to specified coordinate
+     * @param user
+     * @param line
+     * @return
+     */
     private static String teleport(UserData user, String line) {
         return user.teleportUser(line);
     }
